@@ -49,6 +49,8 @@ class ExternalXfer_Controller extends Bluebox_Controller
 
         $interfaceList = array();
 
+	$xmppList = array();
+
         if (class_exists('Trunk'))
         {
             $trunks = Doctrine::getTable('Trunk')->findAll(Doctrine::HYDRATE_ARRAY);
@@ -78,10 +80,28 @@ class ExternalXfer_Controller extends Bluebox_Controller
                 $route_types[ExternalXfer::TYPE_SIP] = 'via SIP URI';
             }
         }
+	
+	if (class_exists('Xmpp'))
+	{
+           $xmpp = Package_Catalog::getPackageByName('xmpp');
+           if(isset($xmpp['installed']) && !empty($xmpp['installed']))// == Package_Manager::STATUS_INSTALLED)		
+           {
+	   	$xmpps = Doctrine::getTable('Xmpp')->findAll(Doctrine::HYDRATE_ARRAY);
+	  
+		   foreach($xmpps as $xmpp)
+		   {
+			$xmppList[$xmpp['xmpp_id']] = $xmpp['name'];
+		   }
 
+		   if(!empty($xmppList))
+		   {
+			$route_types[ExternalXfer::TYPE_XMPP] = 'via XMPP';
+		   }
+	   }
+	}
         if (empty($route_types))
         {
-            message::set('No Trunk or Sip Interfaces avaliable to route external destinations through!');
+            message::set('No Trunk, XMPP or Sip Interfaces avaliable to route external destinations through!');
 
             $this->returnQtipAjaxForm(NULL);
 
@@ -91,6 +111,8 @@ class ExternalXfer_Controller extends Bluebox_Controller
         $this->view->trunks = $trunkList;
 
         $this->view->interfaces = $interfaceList;
+
+	$this->view->xmpps = $xmppList;
 
         $this->view->route_types = $route_types;
 

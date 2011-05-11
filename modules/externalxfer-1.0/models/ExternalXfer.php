@@ -3,7 +3,8 @@
 class ExternalXfer extends Bluebox_Record
 {
     const TYPE_TRUNK = 1;
-    const TYPE_SIP = 2;
+    const TYPE_SIP = 2; 
+    const TYPE_XMPP = 3;
 
     /**
      * Sets the table name, and defines the table columns.

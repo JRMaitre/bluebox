@@ -64,7 +64,31 @@
         ?>
         </div>
     </div>
-
+    <?php
+	$xmpp = Package_Catalog::getPackageByName('xmpp');	
+	if(isset($xmpp['installed']) && !empty($xmpp['installed']))// == Package_Manager::STATUS_INSTALLED) 
+	{
+    ?> 
+	<div id="via_xmpp">
+	    <div class="field">
+	       <?php
+	       	    if (isset($xmpps)) 
+		    {
+               		echo form::label(array('for' => 'externalxfer[route_details][xmpp]', 'hint' => 'XMPP to use'), 'XMPP:');
+            	        echo form::dropdown('externalxfer[route_details][xmpp]', $xmpps);
+	            }
+        	?>
+	     </div>
+             <div class="field">
+	        <?php
+        	    echo form::label(array('for' => 'externalxfer[route_details][numberXmpp]'), 'Number to call:');
+	            echo form::input('externalxfer[route_details][numberXmpp]');
+        	?>
+             </div>
+	</div>
+	<?php
+	}
+	?>
     <?php echo form::close_section(); ?>
 
     <?php echo form::open_section('Options'); ?>
@@ -103,15 +127,25 @@
         if ($('#externalxfer_route_type').val() == 1)
         {
             $('#via_uri').hide();
-
+	    $('#via_xmpp').hide();
+	    
             $('#via_trunk').fadeIn();
         }
-        else
+        else if($('#externalxfer_route_type').val() == 2)
         {
             $('#via_trunk').hide();
+	    $('#via_xmpp').hide();
 
             $('#via_uri').fadeIn();
         }
+	else
+	{
+	    $('#via_trunk').hide();
+            $('#via_uri').hide();
+
+            $('#via_xmpp').fadeIn();
+	
+	}
     }).trigger('change');
 
 <?php javascript::blockEnd(); ?>

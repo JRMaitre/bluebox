@@ -73,6 +73,17 @@ class FreeSwitch_ExternalXfer_Driver extends FreeSwitch_Base_Driver
                     $dialstring = 'sofia/gateway/trunk_' .$destination['route_details']['trunk'] .'/' .$destination['route_details']['number'];
                     
                     break;
+
+	 	case ExternalXfer::TYPE_XMPP:
+
+		    if(empty($destination['route_details']['xmpp']) OR empty($destination['route_details']['xmpp_numberXmpp']))
+		    {
+
+		    }
+		    $xmppTest = Doctrine::getTable('Xmpp')->find($destination['route_details']['xmpp']);
+		    $dialstring = 'dingaling/dingaling_' . $xmppTest['xmpp_id'] . '/+' . $destination['route_details']['numberXmpp'] . '@' . $xmppTest['registry']['outboundserver'];
+		     
+		    break;
             }
 
             $dialstring = str_replace(array('/', '@'), array('\/', '\@'), $dialstring);
@@ -119,6 +130,26 @@ class FreeSwitch_ExternalXfer_Driver extends FreeSwitch_Base_Driver
             } else {
                 $options = '';
             }
+
+	    if(($type = arr::get($destination, 'plugins', 'activefeaturecode', 'type')) && (arr::get($destination, 'plugins', 'activefeaturecode', 'type') != '0'))
+	    {
+		switch($type) 
+		{
+			case 'transfer':
+				$fc = arr::get($destination, 'plugins', 'activefeaturecode', 'number');
+				$ext = arr::get($destination, 'plugins', 'activefeaturecode', 'exten');
+				$transfer = fs::getTransferToNumber($ext);
+				$leg = arr::get($destination, 'plugins', 'activefeaturecode', 'leg');
+
+            			$xml->update('/action[@application="set"][@bluebox="afc_app"]{@data="bridge_pre_execute_' . $leg . 'leg_app=bind_digit_action"}');
+            			$xml->update('/action[@application="set"][@bluebox="afc_data"]{@data="bridge_pre_execute_' . $leg . 'leg_data=transfer_back,' . $fc . ',exec:transfer,-bleg ' . $transfer . '"}');
+
+				break;
+
+			default:
+				break;
+		}
+	    }
 
             $xml->update('/action[@application="bridge"]{@data="' .$options.$dialstring .'"}');
         }

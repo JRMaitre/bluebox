@@ -60,7 +60,129 @@ class MediaFile_Controller extends Bluebox_Controller
         $this->view->grid = $this->grid->produce(array('doctrine_query' => $q));
     }
 
-    /**
+    public function record()
+    {
+        $base = strtolower($this->baseModel);
+
+	$this->template->content = new View('mediafile/record');	
+	
+	$this->view->title = "Record New Media File";
+
+        Event::run('bluebox.create_view', $this->view);
+
+        $this->loadBaseModel();
+
+        $this->updateOnSubmit($this->$base);
+
+	$devicesList = array();
+
+	$devices = Doctrine::getTable('Device')->findAll();
+
+	foreach($devices as $device)
+	{
+  	     foreach($device['Number'] as $number)
+	     {
+	     	$devicesList[$number['number_id']] = $device['name'] . ' (' .$number['number'].')';     
+	     }
+	}
+
+	$this->view->devices = $devicesList;
+
+        $this->prepareUpdateView();
+    }
+
+    //Check if a file with this name already exists.
+    public function isFileExisting($path)
+    {
+	$isExisting = FALSE;
+	if(!empty($path))
+	{
+	    if(file_exists($path))
+	    {
+	        $isExisting = TRUE; 
+	    }
+	}
+	else $isExisting = TRUE;
+	return $isExisting;
+    }
+    
+    //check if the channel is still active and loop until the call is hangup
+    public function checkChannel($channel,$infiniteIndex)
+    {
+	 if($infiniteIndex > 20)
+		return;
+	 $esl=EslManager::getInstance();
+         if($esl->isConnected())
+	 {
+	        $channelActive = TRUE;
+		while($channelActive == TRUE && $infiniteIndex < 20)
+		{ 
+			$listChannels = $esl->api('show channels');
+	        	$responseList = $esl->getResponse($listChannels);
+	       		if(strstr($responseList, $channel)) 
+	        	{
+                		sleep(2);
+			 	$infiniteIndex++;
+         		}
+			else
+			{
+				$channelActive = FALSE;
+			}
+		}
+    	 }
+     }
+
+    public function call()
+    {
+	$this->auto_render=FALSE;
+	$response='';
+	$filename = $_GET['file_name'];
+        $basepath = kohana::config('upload.directory');
+        $basepath = rtrim($basepath, DIRECTORY_SEPARATOR) .DIRECTORY_SEPARATOR .users::getAttr('account_id');
+        Event::run('mediafile.basepath', $basepath);
+        $filepath = rtrim($basepath, DIRECTORY_SEPARATOR) .DIRECTORY_SEPARATOR .$filename .".wav";
+	$this->view->filePath = $filepath;
+	if($this->isFileExisting($filepath)==FALSE)
+	{
+	    if(!preg_match("/[^a-z0-9_]+/i", $filename, $matches))
+	    {
+		if(isset($_GET['number_id']))
+		{
+		   $context = fs::getContextOfNumber($_GET['number_id']);
+		   $number = Doctrine::getTable('Number')->find($_GET['number_id']);
+		   $esl=EslManager::getInstance();
+		   if($esl->isConnected())
+		   {
+		       //We do need a way to avoid voicemails when a call is not answered.
+		      // code darren $result = $esl->api('originate {ignore_early_media=true}sofia/sipinterface_1/device_username@domain.com');
+		       $result = $esl->api('originate {ignore_early_media=true}loopback/'. $number['number']  .'/'. $context  .' &transfer(recording_file:'. $filepath  .' XML '. $context .')');	
+		       $response = $esl->getResponse($result);
+		       $channelEdit = explode(' ',$response);
+        	       $channelEdit = trim($channelEdit[1]);
+		       $esl->api('sched_hangup +40 '.$channelEdit.' alotted_timeout');
+		       $this->checkChannel($channelEdit, 1);
+		   }
+		   if(!($this->isFileExisting($filepath)==TRUE))
+		   {
+                       echo 'Error: file not created, please try again.';
+		   }
+		}
+	    }
+	    else
+	    {
+		echo 'regex not matched';
+	    }
+	}
+	else
+	{
+	    echo 'This file already exists, please choose another one';
+	}
+	echo $response;
+	flush();
+	die();
+    }
+
+     /**
      * This generic delete function will remove entries of $baseModel
      */
     public function delete($id = NULL)
@@ -144,15 +266,28 @@ class MediaFile_Controller extends Bluebox_Controller
 
     protected function save_prepare(&$mediafile)
     {
-        if (!strcasecmp(Router::$method, 'create'))
+	if (Router::$method == 'create')
         {
-            if (($error = $mediafile->prepare_upload()))
+	    if (($error = $mediafile->prepare_upload()))
             {
                 Bluebox_Controller::$validation->add_error('mediafile[upload]', $error);
 
                 throw new Bluebox_Exception('Upload error ' .$error);
             }
         }
+        else if (Router::$method == 'record')
+	{
+	$path = Kohana::config('upload.directory') . DIRECTORY_SEPARATOR . users::getAttr('account_id') . DIRECTORY_SEPARATOR . $mediafile['file'];
+	    if (!($mediainfo = MediaLib::getAudioInfo($path)))
+            {
+                kohana::log('error', 'Unable to determine audio info for tmp upload file "' .$path .'"');
+                return 'Upload is not a valid audio file or format';
+            }
+	    else
+	    {
+		$mediafile->fromArray($mediainfo);
+	    }
+	}
 
         parent::save_prepare($object);
     }
@@ -219,11 +354,9 @@ class MediaFile_Controller extends Bluebox_Controller
 
     public function qtipAjaxReturn($data)
     {
-        if ($data instanceof MediaFile)
+	if ($data instanceof MediaFile)
         {
-            $hide_rate = kohana::config('mediafile.hide_rate_folders');
-
-            $id = $data->filepath(TRUE, !$hide_rate);
+            $id = $data->filepath(TRUE);
 
             $catalog = MediaFile::catalog();
 
@@ -244,5 +377,5 @@ class MediaFile_Controller extends Bluebox_Controller
         }
 
         parent::qtipAjaxReturn($data);
-    }
+   } 
 }

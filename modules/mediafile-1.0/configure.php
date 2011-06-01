@@ -21,6 +21,7 @@ class MediaFile_1_0_Configure extends Bluebox_Configure
     public static $navSubmenu = array(
         'List Media' => '/mediafile/index',
         'Add Media' => '/mediafile/create',
+	'Record Media' => '/mediafile/record',
         'Edit Media' => array(
             'url' => '/mediafile/edit',
             'disabled' => TRUE

@@ -22,18 +22,15 @@
 
     <?php echo form::close_section(); ?>
 
-    <?php if (!strcasecmp(Router::$method, 'create')): ?>
+    <?php if (!strcasecmp(Router::$method, 'create')){ ?>
 
         <?php echo form::open_section('File'); ?>
-    
             <div class="field">
                 <?php echo form::label('mediafile[upload]', 'Audio File (MP3 or WAV):'); ?>
                 <?php echo form::upload('mediafile[upload]'); ?>
             </div>
-
         <?php echo form::close_section(); ?>
-
-    <?php else : ?>
+    <?php } else { ?>
 
         <?php echo form::open_section('Media Information'); ?>
 
@@ -57,19 +54,19 @@
 
         <?php echo form::close_section(); ?>
 
-        <?php if (kohana::config('mediafile.playback', TRUE)): ?>
+        <?php if (kohana::config('mediafile.playback', TRUE)) { ?>
 
             <?php echo new View('mediafile/playback', array('mediafile' => $sample_rates[0])); ?>
 
-        <?php endif; ?>
+        <?php } ?>
 
-        <?php if (kohana::config('mediafile.file_details', TRUE)): ?>
+        <?php if (kohana::config('mediafile.file_details', TRUE)) { ?>
 
             <?php echo new View('mediafile/details', array('mediafiles' => $sample_rates)); ?>
     
-        <?php endif; ?>
+        <?php } ?>
 
-    <?php endif; ?>
+    <?php } ?>
 
     <?php echo form::close(TRUE); ?>
     
